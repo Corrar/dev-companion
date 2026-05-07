@@ -18,7 +18,8 @@ export const Route = createFileRoute("/tickets")({
   component: TicketsPage,
 });
 
-const statusLabel: Record<TicketStatus, string> = { aberto: "Aberto", andamento: "Em andamento", concluido: "Concluído" };
+const statusLabel: Record<TicketStatus, string> = { espera: "Em espera", aceita: "Aceita", desenvolvimento: "Em desenvolvimento", concluido: "Concluído" };
+const statusProgress: Record<TicketStatus, number> = { espera: 0, aceita: 33, desenvolvimento: 66, concluido: 100 };
 const priorityLabel: Record<Priority, string> = { baixa: "Baixa", media: "Média", alta: "Alta" };
 const priorityClass: Record<Priority, string> = {
   baixa: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
@@ -26,8 +27,9 @@ const priorityClass: Record<Priority, string> = {
   alta: "bg-rose-500/15 text-rose-600 dark:text-rose-400",
 };
 const statusClass: Record<TicketStatus, string> = {
-  aberto: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
-  andamento: "bg-violet-500/15 text-violet-600 dark:text-violet-400",
+  espera: "bg-slate-500/15 text-slate-600 dark:text-slate-400",
+  aceita: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
+  desenvolvimento: "bg-violet-500/15 text-violet-600 dark:text-violet-400",
   concluido: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
 };
 
