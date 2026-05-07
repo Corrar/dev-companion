@@ -31,6 +31,8 @@ export interface Ticket {
   title: string;
   status: TicketStatus;
   priority: Priority;
+  sector: string;
+  progress: number;
   createdAt: string;
   completedAt?: string;
 }

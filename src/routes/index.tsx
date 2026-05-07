@@ -2,10 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useLocalStorage, type Ticket, type ProjectTask } from "@/lib/storage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
-import { CheckCircle2, Ticket as TicketIcon, FolderKanban, TrendingUp } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CheckCircle2, Ticket as TicketIcon, FolderKanban, TrendingUp, CalendarIcon } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
+import { cn } from "@/lib/utils";
+import type { DateRange } from "react-day-picker";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -19,28 +23,38 @@ export const Route = createFileRoute("/")({
 
 const monthNames = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
+function formatRange(r?: DateRange) {
+  if (!r?.from) return "Selecionar período";
+  const f = (d: Date) => d.toLocaleDateString("pt-BR");
+  return r.to ? `${f(r.from)} — ${f(r.to)}` : f(r.from);
+}
+
 function Dashboard() {
   const [tickets] = useLocalStorage<Ticket[]>("tickets", []);
   const [tasks] = useLocalStorage<ProjectTask[]>("projects", []);
   const now = new Date();
-  const [month, setMonth] = useState(now.getMonth());
+  const [range, setRange] = useState<DateRange | undefined>({
+    from: new Date(now.getFullYear(), now.getMonth(), 1),
+    to: new Date(now.getFullYear(), now.getMonth() + 1, 0),
+  });
   const year = now.getFullYear();
 
-  const inMonth = (iso?: string) => {
-    if (!iso) return false;
-    const d = new Date(iso);
-    return d.getMonth() === month && d.getFullYear() === year;
+  const inRange = (iso?: string) => {
+    if (!iso || !range?.from) return false;
+    const d = new Date(iso).getTime();
+    const from = new Date(range.from).setHours(0, 0, 0, 0);
+    const to = new Date(range.to ?? range.from).setHours(23, 59, 59, 999);
+    return d >= from && d <= to;
   };
 
   const stats = useMemo(() => {
-    const tasksDone = tasks.filter((t) => t.column === "done" && inMonth(t.completedAt)).length;
-    const tasksCreated = tasks.filter((t) => inMonth(t.createdAt)).length;
-    const ticketsDone = tickets.filter((t) => t.status === "concluido" && inMonth(t.completedAt)).length;
-    const ticketsTotal = tickets.filter((t) => inMonth(t.createdAt)).length;
+    const tasksDone = tasks.filter((t) => t.column === "done" && inRange(t.completedAt)).length;
+    const tasksCreated = tasks.filter((t) => inRange(t.createdAt)).length;
+    const ticketsDone = tickets.filter((t) => t.status === "concluido" && inRange(t.completedAt)).length;
     const ongoing = tasks.filter((t) => t.column !== "done").length;
     const productivity = tasksCreated > 0 ? Math.round((tasksDone / tasksCreated) * 100) : 0;
-    return { tasksDone, tasksCreated, ticketsDone, ticketsTotal, ongoing, productivity };
-  }, [tickets, tasks, month]);
+    return { tasksDone, tasksCreated, ticketsDone, ongoing, productivity };
+  }, [tickets, tasks, range]);
 
   const chartData = useMemo(() => {
     return Array.from({ length: 12 }, (_, m) => ({
@@ -61,17 +75,27 @@ function Dashboard() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Desempenho do Mês</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Desempenho do Período</h1>
           <p className="text-sm text-muted-foreground">Resumo da sua produtividade.</p>
         </div>
-        <Select value={String(month)} onValueChange={(v) => setMonth(Number(v))}>
-          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            {monthNames.map((m, i) => (
-              <SelectItem key={i} value={String(i)}>{m} / {year}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className={cn("justify-start text-left font-normal gap-2", !range?.from && "text-muted-foreground")}>
+              <CalendarIcon className="h-4 w-4" />
+              {formatRange(range)}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="end">
+            <Calendar
+              mode="range"
+              selected={range}
+              onSelect={setRange}
+              numberOfMonths={1}
+              initialFocus
+              className={cn("p-3 pointer-events-auto")}
+            />
+          </PopoverContent>
+        </Popover>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -92,7 +116,7 @@ function Dashboard() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Produtividade do mês</CardTitle>
+          <CardTitle className="text-base">Produtividade do período</CardTitle>
         </CardHeader>
         <CardContent>
           <Progress value={stats.productivity} />
