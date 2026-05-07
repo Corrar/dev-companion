@@ -23,7 +23,7 @@ export function useLocalStorage<T>(key: string, initial: T) {
   return [value, update] as const;
 }
 
-export type TicketStatus = "aberto" | "andamento" | "concluido";
+export type TicketStatus = "espera" | "aceita" | "desenvolvimento" | "concluido";
 export type Priority = "baixa" | "media" | "alta";
 
 export interface Ticket {

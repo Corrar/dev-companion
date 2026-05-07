@@ -18,7 +18,8 @@ export const Route = createFileRoute("/tickets")({
   component: TicketsPage,
 });
 
-const statusLabel: Record<TicketStatus, string> = { aberto: "Aberto", andamento: "Em andamento", concluido: "Concluído" };
+const statusLabel: Record<TicketStatus, string> = { espera: "Em espera", aceita: "Aceita", desenvolvimento: "Em desenvolvimento", concluido: "Concluído" };
+const statusProgress: Record<TicketStatus, number> = { espera: 0, aceita: 33, desenvolvimento: 66, concluido: 100 };
 const priorityLabel: Record<Priority, string> = { baixa: "Baixa", media: "Média", alta: "Alta" };
 const priorityClass: Record<Priority, string> = {
   baixa: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
@@ -26,8 +27,9 @@ const priorityClass: Record<Priority, string> = {
   alta: "bg-rose-500/15 text-rose-600 dark:text-rose-400",
 };
 const statusClass: Record<TicketStatus, string> = {
-  aberto: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
-  andamento: "bg-violet-500/15 text-violet-600 dark:text-violet-400",
+  espera: "bg-slate-500/15 text-slate-600 dark:text-slate-400",
+  aceita: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
+  desenvolvimento: "bg-violet-500/15 text-violet-600 dark:text-violet-400",
   concluido: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
 };
 
@@ -41,7 +43,7 @@ function TicketsPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Ticket | null>(null);
   const [form, setForm] = useState<FormState>({
-    title: "", status: "aberto", priority: "media", sector: SECTORS[0], progress: 0,
+    title: "", status: "espera", priority: "media", sector: SECTORS[0], progress: statusProgress.espera,
   });
 
   const filtered = useMemo(
@@ -51,7 +53,7 @@ function TicketsPage() {
 
   const openNew = () => {
     setEditing(null);
-    setForm({ title: "", status: "aberto", priority: "media", sector: SECTORS[0], progress: 0 });
+    setForm({ title: "", status: "espera", priority: "media", sector: SECTORS[0], progress: statusProgress.espera });
     setOpen(true);
   };
   const openEdit = (t: Ticket) => {
@@ -62,7 +64,7 @@ function TicketsPage() {
 
   const save = () => {
     if (!form.title.trim()) return toast.error("Informe um título");
-    const progress = form.status === "concluido" ? 100 : form.status === "aberto" ? Math.min(form.progress, 25) : form.progress;
+    const progress = statusProgress[form.status];
     if (editing) {
       setTickets((prev) => prev.map((t) => t.id === editing.id ? {
         ...t, ...form, progress,
@@ -127,7 +129,7 @@ function TicketsPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label>Status</Label>
-                    <Select value={form.status} onValueChange={(v: TicketStatus) => setForm({ ...form, status: v, progress: v === "concluido" ? 100 : v === "aberto" ? 0 : form.progress || 50 })}>
+                    <Select value={form.status} onValueChange={(v: TicketStatus) => setForm({ ...form, status: v, progress: statusProgress[v] })}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {(Object.keys(statusLabel) as TicketStatus[]).map((s) => <SelectItem key={s} value={s}>{statusLabel[s]}</SelectItem>)}
@@ -146,10 +148,11 @@ function TicketsPage() {
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label>Progresso</Label>
-                    <span className="text-sm tabular-nums text-muted-foreground">{form.progress}%</span>
+                    <Label>Progresso (automático)</Label>
+                    <span className="text-sm tabular-nums text-muted-foreground">{statusProgress[form.status]}%</span>
                   </div>
-                  <Slider value={[form.progress]} onValueChange={([v]) => setForm({ ...form, progress: v })} max={100} step={5} />
+                  <Progress value={statusProgress[form.status]} />
+                  <p className="text-xs text-muted-foreground">A barra avança conforme o processo selecionado.</p>
                 </div>
               </div>
               <DialogFooter>
