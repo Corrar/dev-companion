@@ -129,7 +129,7 @@ function TicketsPage() {
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
                     <Label>Status</Label>
-                    <Select value={form.status} onValueChange={(v: TicketStatus) => setForm({ ...form, status: v, progress: v === "concluido" ? 100 : v === "aberto" ? 0 : form.progress || 50 })}>
+                    <Select value={form.status} onValueChange={(v: TicketStatus) => setForm({ ...form, status: v, progress: statusProgress[v] })}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {(Object.keys(statusLabel) as TicketStatus[]).map((s) => <SelectItem key={s} value={s}>{statusLabel[s]}</SelectItem>)}
