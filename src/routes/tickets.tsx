@@ -64,7 +64,7 @@ function TicketsPage() {
 
   const save = () => {
     if (!form.title.trim()) return toast.error("Informe um título");
-    const progress = form.status === "concluido" ? 100 : form.status === "aberto" ? Math.min(form.progress, 25) : form.progress;
+    const progress = statusProgress[form.status];
     if (editing) {
       setTickets((prev) => prev.map((t) => t.id === editing.id ? {
         ...t, ...form, progress,
