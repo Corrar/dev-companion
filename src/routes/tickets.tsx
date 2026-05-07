@@ -43,7 +43,7 @@ function TicketsPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Ticket | null>(null);
   const [form, setForm] = useState<FormState>({
-    title: "", status: "aberto", priority: "media", sector: SECTORS[0], progress: 0,
+    title: "", status: "espera", priority: "media", sector: SECTORS[0], progress: statusProgress.espera,
   });
 
   const filtered = useMemo(
