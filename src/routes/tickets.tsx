@@ -148,10 +148,11 @@ function TicketsPage() {
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label>Progresso</Label>
-                    <span className="text-sm tabular-nums text-muted-foreground">{form.progress}%</span>
+                    <Label>Progresso (automático)</Label>
+                    <span className="text-sm tabular-nums text-muted-foreground">{statusProgress[form.status]}%</span>
                   </div>
-                  <Slider value={[form.progress]} onValueChange={([v]) => setForm({ ...form, progress: v })} max={100} step={5} />
+                  <Progress value={statusProgress[form.status]} />
+                  <p className="text-xs text-muted-foreground">A barra avança conforme o processo selecionado.</p>
                 </div>
               </div>
               <DialogFooter>
