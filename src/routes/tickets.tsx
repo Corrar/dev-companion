@@ -53,7 +53,7 @@ function TicketsPage() {
 
   const openNew = () => {
     setEditing(null);
-    setForm({ title: "", status: "aberto", priority: "media", sector: SECTORS[0], progress: 0 });
+    setForm({ title: "", status: "espera", priority: "media", sector: SECTORS[0], progress: statusProgress.espera });
     setOpen(true);
   };
   const openEdit = (t: Ticket) => {
