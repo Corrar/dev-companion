@@ -332,6 +332,22 @@ function TicketsPage() {
               className="pl-8 w-56"
             />
           </div>
+          <Select value={priorityFilter} onValueChange={(v: PriorityFilter) => setPriorityFilter(v)}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Prioridade" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas prioridades</SelectItem>
+              {(Object.keys(priorityLabel) as Priority[]).map((p) => (
+                <SelectItem key={p} value={p}>
+                  {priorityLabel[p]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button variant="outline" onClick={printList}>
+            <Printer className="h-4 w-4" /> Imprimir
+          </Button>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button onClick={openNew}>
