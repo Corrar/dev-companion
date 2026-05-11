@@ -59,6 +59,26 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /*
+   * Tokens semânticos do design-system portado do FluxoRoyale.
+   * Prioridade e status: cores estáveis em light/dark (não invertem).
+   * Backgrounds (-bg) já vêm com luminosidade alta; em dark, são overlays.
+   */
+  --color-priority-low: var(--priority-low);
+  --color-priority-medium: var(--priority-medium);
+  --color-priority-high: var(--priority-high);
+  --color-priority-urgent: var(--priority-urgent);
+
+  --color-status-pending: var(--status-pending);
+  --color-status-pending-bg: var(--status-pending-bg);
+  --color-status-progress: var(--status-progress);
+  --color-status-progress-bg: var(--status-progress-bg);
+  --color-status-done: var(--status-done);
+  --color-status-done-bg: var(--status-done-bg);
+
+  --shadow-card: var(--shadow-card);
+  --shadow-elevated: var(--shadow-elevated);
 }
 
 :root {
@@ -95,6 +115,23 @@
   --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
   --sidebar-border: oklch(0.929 0.013 255.508);
   --sidebar-ring: oklch(0.704 0.04 256.788);
+
+  /* Prioridade — light mode */
+  --priority-low: oklch(0.69 0.176 145);
+  --priority-medium: oklch(0.81 0.17 88);
+  --priority-high: oklch(0.69 0.207 41);
+  --priority-urgent: oklch(0.65 0.226 27);
+
+  /* Status semântico — light mode */
+  --status-pending: oklch(0.55 0.04 256);
+  --status-pending-bg: oklch(0.96 0.012 247);
+  --status-progress: oklch(0.74 0.166 70);
+  --status-progress-bg: oklch(0.94 0.08 88);
+  --status-done: oklch(0.55 0.18 145);
+  --status-done-bg: oklch(0.94 0.08 145);
+
+  --shadow-card: 0 1px 3px rgb(0 0 0 / 0.1), 0 1px 2px rgb(0 0 0 / 0.06);
+  --shadow-elevated: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -1px rgb(0 0 0 / 0.06);
 }
 
 .dark {
@@ -130,6 +167,23 @@
   --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.551 0.027 264.364);
+
+  /* Prioridade — dark mode (mais saturado, ligeiramente mais claro) */
+  --priority-low: oklch(0.74 0.18 145);
+  --priority-medium: oklch(0.85 0.17 88);
+  --priority-high: oklch(0.74 0.21 41);
+  --priority-urgent: oklch(0.7 0.23 27);
+
+  /* Status semântico — dark mode (bgs viram overlays sutis) */
+  --status-pending: oklch(0.7 0.04 256);
+  --status-pending-bg: oklch(0.3 0.04 256 / 0.4);
+  --status-progress: oklch(0.82 0.166 70);
+  --status-progress-bg: oklch(0.4 0.12 70 / 0.3);
+  --status-done: oklch(0.74 0.18 145);
+  --status-done-bg: oklch(0.4 0.12 145 / 0.3);
+
+  --shadow-card: 0 1px 3px rgb(0 0 0 / 0.4), 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow-elevated: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -1px rgb(0 0 0 / 0.3);
 }
 
 @layer base {
