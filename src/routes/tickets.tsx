@@ -125,6 +125,7 @@ type PriorityFilter = "all" | Priority;
 function TicketsPage() {
   const [tickets, setTickets] = useLocalStorage<Ticket[]>("tickets", []);
   const [search, setSearch] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>("all");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Ticket | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm());
@@ -136,12 +137,14 @@ function TicketsPage() {
     () =>
       tickets.filter((t) => {
         const q = search.toLowerCase();
-        return (
+        const matchesSearch =
           t.title.toLowerCase().includes(q) ||
-          (t.description ?? "").toLowerCase().includes(q)
-        );
+          (t.description ?? "").toLowerCase().includes(q) ||
+          (t.requester ?? "").toLowerCase().includes(q);
+        const matchesPriority = priorityFilter === "all" || t.priority === priorityFilter;
+        return matchesSearch && matchesPriority;
       }),
-    [tickets, search],
+    [tickets, search, priorityFilter],
   );
 
   const openNew = () => {
