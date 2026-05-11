@@ -26,9 +26,20 @@ export function useLocalStorage<T>(key: string, initial: T) {
 export type TicketStatus = "espera" | "aceita" | "desenvolvimento" | "concluido";
 export type Priority = "baixa" | "media" | "alta";
 
+export interface TicketAttachment {
+  id: string;
+  name: string;
+  dataUrl: string; // base64
+  type: string;
+  size: number;
+}
+
 export interface Ticket {
   id: string;
   title: string;
+  description?: string;
+  links?: string[];
+  attachments?: TicketAttachment[];
   status: TicketStatus;
   priority: Priority;
   sector: string;
