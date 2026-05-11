@@ -101,6 +101,7 @@ const isValidUrl = (s: string) => {
 type FormState = {
   title: string;
   description: string;
+  requester: string;
   status: TicketStatus;
   priority: Priority;
   sector: string;
@@ -111,12 +112,15 @@ type FormState = {
 const emptyForm = (): FormState => ({
   title: "",
   description: "",
+  requester: "",
   status: "espera",
   priority: "media",
   sector: SECTORS[0],
   links: [],
   attachments: [],
 });
+
+type PriorityFilter = "all" | Priority;
 
 function TicketsPage() {
   const [tickets, setTickets] = useLocalStorage<Ticket[]>("tickets", []);
