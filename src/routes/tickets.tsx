@@ -42,6 +42,9 @@ import {
   X,
   Image as ImageIcon,
   Eye,
+  Printer,
+  User,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 
