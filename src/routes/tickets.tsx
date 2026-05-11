@@ -574,13 +574,13 @@ function TicketsPage() {
           {filtered.map((t) => {
             const imgs = (t.attachments ?? []).filter((a) => a.type.startsWith("image/"));
             return (
-              <Card key={t.id} className="flex flex-col overflow-hidden">
+              <Card
+                key={t.id}
+                onClick={() => setView(t)}
+                className="group flex cursor-pointer flex-col overflow-hidden transition hover:border-primary/50 hover:shadow-md"
+              >
                 {imgs[0] && (
-                  <button
-                    type="button"
-                    onClick={() => setView(t)}
-                    className="relative block aspect-video overflow-hidden bg-muted"
-                  >
+                  <div className="relative block aspect-video overflow-hidden bg-muted">
                     <img
                       src={imgs[0].dataUrl}
                       alt={imgs[0].name}
@@ -591,16 +591,21 @@ function TicketsPage() {
                         +{imgs.length - 1}
                       </span>
                     )}
-                  </button>
+                  </div>
                 )}
                 <CardContent className="flex flex-1 flex-col gap-3 p-4">
                   <div className="space-y-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="font-medium leading-snug">{t.title}</h3>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      <Building2 className="h-3 w-3" />
-                      <span>{t.sector ?? "—"}</span>
+                    <h3 className="font-medium leading-snug">{t.title}</h3>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                      <span className="inline-flex items-center gap-1">
+                        <User className="h-3 w-3" />
+                        {t.requester || "—"}
+                      </span>
+                      <span>•</span>
+                      <span className="inline-flex items-center gap-1">
+                        <Building2 className="h-3 w-3" />
+                        {t.sector ?? "—"}
+                      </span>
                       <span>•</span>
                       <span>{new Date(t.createdAt).toLocaleDateString("pt-BR")}</span>
                     </div>
@@ -612,6 +617,7 @@ function TicketsPage() {
 
                   <div className="flex flex-wrap gap-1.5">
                     <Badge className={priorityClass[t.priority]} variant="secondary">
+                      <AlertTriangle className="mr-1 h-3 w-3" />
                       {priorityLabel[t.priority]}
                     </Badge>
                     <Badge className={statusClass[t.status]} variant="secondary">
@@ -639,15 +645,10 @@ function TicketsPage() {
                     <Progress value={t.progress ?? 0} />
                   </div>
 
-                  <div className="mt-auto flex justify-end gap-1 pt-1">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => setView(t)}
-                      title="Ver detalhes"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
+                  <div
+                    className="mt-auto flex justify-end gap-1 pt-1"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {t.status !== "concluido" && (
                       <Button
                         size="icon"
@@ -658,10 +659,10 @@ function TicketsPage() {
                         <Check className="h-4 w-4" />
                       </Button>
                     )}
-                    <Button size="icon" variant="ghost" onClick={() => openEdit(t)}>
+                    <Button size="icon" variant="ghost" onClick={() => openEdit(t)} title="Editar">
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button size="icon" variant="ghost" onClick={() => remove(t.id)}>
+                    <Button size="icon" variant="ghost" onClick={() => remove(t.id)} title="Excluir">
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
