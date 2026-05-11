@@ -1,5 +1,12 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Ticket, KanbanSquare, CalendarDays, Code2 } from "lucide-react";
+import {
+  LayoutDashboard,
+  Ticket,
+  KanbanSquare,
+  CalendarDays,
+  CalendarClock,
+  Code2,
+} from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -16,6 +23,7 @@ const items = [
   { title: "Desempenho do Mês", url: "/", icon: LayoutDashboard },
   { title: "Chamados", url: "/tickets", icon: Ticket },
   { title: "Projetos", url: "/projects", icon: KanbanSquare },
+  { title: "Agenda", url: "/agenda", icon: CalendarClock },
   { title: "Calendário", url: "/calendar", icon: CalendarDays },
 ];
 

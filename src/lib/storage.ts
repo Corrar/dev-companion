@@ -65,6 +65,10 @@ export interface ProjectTask {
   checklist: SubTask[];
   createdAt: string;
   completedAt?: string;
+  /** ISO datetime opcional — quando presente, a tarefa aparece em /agenda. */
+  start?: string;
+  /** ISO datetime opcional — fim do bloco visual na agenda. */
+  end?: string;
 }
 
 export interface Note {
