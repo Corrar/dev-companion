@@ -359,13 +359,23 @@ function TicketsPage() {
                 <DialogTitle>{editing ? "Editar chamado" : "Novo chamado"}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Título *</Label>
-                  <Input
-                    placeholder="Resumo do problema"
-                    value={form.title}
-                    onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>Título *</Label>
+                    <Input
+                      placeholder="Resumo do problema"
+                      value={form.title}
+                      onChange={(e) => setForm({ ...form, title: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Solicitante</Label>
+                    <Input
+                      placeholder="Seu nome"
+                      value={form.requester}
+                      onChange={(e) => setForm({ ...form, requester: e.target.value })}
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
