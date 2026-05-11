@@ -249,6 +249,70 @@ function TicketsPage() {
 
   const remove = (id: string) => setTickets((prev) => prev.filter((t) => t.id !== id));
 
+  const printList = () => {
+    const escape = (s: string) =>
+      s.replace(/[&<>"']/g, (c) =>
+        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
+      );
+    const rows = filtered
+      .map(
+        (t) => `
+          <article class="ticket">
+            <header>
+              <h2>${escape(t.title)}</h2>
+              <span class="badge p-${t.priority}">${priorityLabel[t.priority]}</span>
+              <span class="badge s">${statusLabel[t.status]}</span>
+            </header>
+            <div class="meta">
+              <span><strong>Solicitante:</strong> ${escape(t.requester || "—")}</span>
+              <span><strong>Setor:</strong> ${escape(t.sector || "—")}</span>
+              <span><strong>Aberto em:</strong> ${new Date(t.createdAt).toLocaleString("pt-BR")}</span>
+              <span><strong>Progresso:</strong> ${t.progress ?? 0}%</span>
+            </div>
+            ${t.description ? `<p class="desc">${escape(t.description)}</p>` : ""}
+            ${
+              t.links?.length
+                ? `<div class="links"><strong>Links:</strong><ul>${t.links
+                    .map((l) => `<li>${escape(l)}</li>`)
+                    .join("")}</ul></div>`
+                : ""
+            }
+          </article>`,
+      )
+      .join("");
+    const filterLabel =
+      priorityFilter === "all" ? "Todas as prioridades" : `Prioridade: ${priorityLabel[priorityFilter]}`;
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Chamados — DevHub</title>
+      <style>
+        *{box-sizing:border-box}
+        body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#111;padding:24px;max-width:900px;margin:0 auto}
+        h1{margin:0 0 4px;font-size:22px}
+        .sub{color:#555;font-size:13px;margin-bottom:20px}
+        .ticket{border:1px solid #ddd;border-radius:8px;padding:14px;margin-bottom:12px;page-break-inside:avoid}
+        .ticket header{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+        .ticket h2{font-size:15px;margin:0;flex:1;min-width:200px}
+        .badge{font-size:11px;padding:2px 8px;border-radius:999px;background:#eee}
+        .p-baixa{background:#dcfce7;color:#166534}
+        .p-media{background:#fef3c7;color:#92400e}
+        .p-alta{background:#fee2e2;color:#991b1b}
+        .s{background:#e0e7ff;color:#3730a3}
+        .meta{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:12px;color:#444;margin-bottom:8px}
+        .desc{font-size:13px;white-space:pre-wrap;background:#f8f8f8;padding:8px;border-radius:6px;margin:8px 0}
+        .links{font-size:12px}
+        .links ul{margin:4px 0 0 18px;padding:0}
+        @media print{body{padding:0}}
+      </style></head><body>
+        <h1>Lista de Chamados</h1>
+        <div class="sub">${filterLabel} • ${filtered.length} chamado(s) • ${new Date().toLocaleString("pt-BR")}</div>
+        ${rows || '<p style="color:#888">Nenhum chamado.</p>'}
+        <script>window.onload=()=>setTimeout(()=>window.print(),300)</script>
+      </body></html>`;
+    const w = window.open("", "_blank");
+    if (!w) return toast.error("Permita pop-ups para imprimir");
+    w.document.write(html);
+    w.document.close();
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
