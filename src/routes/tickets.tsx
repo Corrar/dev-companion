@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   useLocalStorage,
   uid,
@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
   Dialog,
@@ -41,12 +40,17 @@ import {
   LinkIcon,
   X,
   Image as ImageIcon,
-  Eye,
   Printer,
   User,
-  AlertTriangle,
+  TicketIcon,
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  SectionShell,
+  StatusBadge,
+  type StatusBadgeTone,
+} from "@/components/design-system";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/tickets")({
   head: () => ({ meta: [{ title: "Chamados — DevHub" }] }),
@@ -59,23 +63,27 @@ const statusLabel: Record<TicketStatus, string> = {
   desenvolvimento: "Em desenvolvimento",
   concluido: "Concluído",
 };
+const statusTone: Record<TicketStatus, StatusBadgeTone> = {
+  espera: "neutral",
+  aceita: "info",
+  desenvolvimento: "warning",
+  concluido: "success",
+};
 const statusProgress: Record<TicketStatus, number> = {
   espera: 0,
   aceita: 33,
   desenvolvimento: 66,
   concluido: 100,
 };
-const priorityLabel: Record<Priority, string> = { baixa: "Baixa", media: "Média", alta: "Alta" };
-const priorityClass: Record<Priority, string> = {
-  baixa: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
-  media: "bg-amber-500/15 text-amber-600 dark:text-amber-400",
-  alta: "bg-rose-500/15 text-rose-600 dark:text-rose-400",
+const priorityLabel: Record<Priority, string> = {
+  baixa: "Baixa",
+  media: "Média",
+  alta: "Alta",
 };
-const statusClass: Record<TicketStatus, string> = {
-  espera: "bg-slate-500/15 text-slate-600 dark:text-slate-400",
-  aceita: "bg-blue-500/15 text-blue-600 dark:text-blue-400",
-  desenvolvimento: "bg-violet-500/15 text-violet-600 dark:text-violet-400",
-  concluido: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+const priorityTone: Record<Priority, StatusBadgeTone> = {
+  baixa: "low",
+  media: "medium",
+  alta: "high",
 };
 
 const SECTORS = [
@@ -115,12 +123,48 @@ const emptyForm = (): FormState => ({
   requester: "",
   status: "espera",
   priority: "media",
-  sector: SECTORS[0],
+  sector: SECTORS[0]!,
   links: [],
   attachments: [],
 });
 
 type PriorityFilter = "all" | Priority;
+
+const DRAFT_KEY = "tickets-new-draft";
+
+function readDraft(): Pick<FormState, "title" | "description" | "requester" | "sector"> | null {
+  try {
+    const raw = window.localStorage.getItem(DRAFT_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function writeDraft(d: FormState) {
+  try {
+    window.localStorage.setItem(
+      DRAFT_KEY,
+      JSON.stringify({
+        title: d.title,
+        description: d.description,
+        requester: d.requester,
+        sector: d.sector,
+      }),
+    );
+  } catch {
+    /* ignora */
+  }
+}
+
+function clearDraft() {
+  try {
+    window.localStorage.removeItem(DRAFT_KEY);
+  } catch {
+    /* ignora */
+  }
+}
 
 function TicketsPage() {
   const [tickets, setTickets] = useLocalStorage<Ticket[]>("tickets", []);
@@ -129,9 +173,26 @@ function TicketsPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Ticket | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm());
+  const [submitted, setSubmitted] = useState(false);
   const [linkInput, setLinkInput] = useState("");
   const [view, setView] = useState<Ticket | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const descriptionRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // Auto-save draft (apenas no modo "novo", não em edição)
+  useEffect(() => {
+    if (!open || editing) return;
+    const id = window.setTimeout(() => writeDraft(form), 500);
+    return () => window.clearTimeout(id);
+  }, [form, open, editing]);
+
+  // Auto-grow do textarea de descrição
+  useEffect(() => {
+    const el = descriptionRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 320)}px`;
+  }, [form.description, open]);
 
   const filtered = useMemo(
     () =>
@@ -141,7 +202,8 @@ function TicketsPage() {
           t.title.toLowerCase().includes(q) ||
           (t.description ?? "").toLowerCase().includes(q) ||
           (t.requester ?? "").toLowerCase().includes(q);
-        const matchesPriority = priorityFilter === "all" || t.priority === priorityFilter;
+        const matchesPriority =
+          priorityFilter === "all" || t.priority === priorityFilter;
         return matchesSearch && matchesPriority;
       }),
     [tickets, search, priorityFilter],
@@ -149,7 +211,12 @@ function TicketsPage() {
 
   const openNew = () => {
     setEditing(null);
-    setForm(emptyForm());
+    const draft = readDraft();
+    setForm({
+      ...emptyForm(),
+      ...(draft ?? {}),
+    });
+    setSubmitted(false);
     setLinkInput("");
     setOpen(true);
   };
@@ -161,10 +228,11 @@ function TicketsPage() {
       requester: t.requester ?? "",
       status: t.status,
       priority: t.priority,
-      sector: t.sector ?? SECTORS[0],
+      sector: t.sector ?? SECTORS[0]!,
       links: t.links ?? [],
       attachments: t.attachments ?? [],
     });
+    setSubmitted(false);
     setLinkInput("");
     setOpen(true);
   };
@@ -194,7 +262,13 @@ function TicketsPage() {
         r.onerror = rej;
         r.readAsDataURL(file);
       });
-      next.push({ id: uid(), name: file.name, dataUrl, type: file.type, size: file.size });
+      next.push({
+        id: uid(),
+        name: file.name,
+        dataUrl,
+        type: file.type,
+        size: file.size,
+      });
     }
     if (next.length) setForm((f) => ({ ...f, attachments: [...f.attachments, ...next] }));
     if (fileRef.current) fileRef.current.value = "";
@@ -203,9 +277,19 @@ function TicketsPage() {
   const removeAttachment = (id: string) =>
     setForm((f) => ({ ...f, attachments: f.attachments.filter((a) => a.id !== id) }));
 
+  // Validação inline derivada
+  const titleError =
+    submitted && !form.title.trim() ? "Título obrigatório." : undefined;
+  const descError =
+    submitted && !form.description.trim() ? "Descreva o problema." : undefined;
+  const isValid = !!form.title.trim() && !!form.description.trim();
+
   const save = () => {
-    if (!form.title.trim()) return toast.error("Informe um título");
-    if (!form.description.trim()) return toast.error("Descreva o problema");
+    setSubmitted(true);
+    if (!isValid) {
+      toast.error("Confira os campos destacados.");
+      return;
+    }
     const progress = statusProgress[form.status];
     if (editing) {
       setTickets((prev) =>
@@ -234,15 +318,28 @@ function TicketsPage() {
       };
       setTickets((prev) => [newTicket, ...prev]);
       toast.success(`Chamado encaminhado ao setor ${form.sector}`);
+      clearDraft();
     }
     setOpen(false);
+  };
+
+  const handleDialogKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+      e.preventDefault();
+      save();
+    }
   };
 
   const complete = (id: string) =>
     setTickets((prev) =>
       prev.map((t) =>
         t.id === id
-          ? { ...t, status: "concluido", progress: 100, completedAt: new Date().toISOString() }
+          ? {
+              ...t,
+              status: "concluido",
+              progress: 100,
+              completedAt: new Date().toISOString(),
+            }
           : t,
       ),
     );
@@ -281,7 +378,9 @@ function TicketsPage() {
       )
       .join("");
     const filterLabel =
-      priorityFilter === "all" ? "Todas as prioridades" : `Prioridade: ${priorityLabel[priorityFilter]}`;
+      priorityFilter === "all"
+        ? "Todas as prioridades"
+        : `Prioridade: ${priorityLabel[priorityFilter]}`;
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>Chamados — DevHub</title>
       <style>
         *{box-sizing:border-box}
@@ -324,15 +423,18 @@ function TicketsPage() {
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">
-            <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Buscar..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-8 w-56"
+              className="w-56 pl-8"
             />
           </div>
-          <Select value={priorityFilter} onValueChange={(v: PriorityFilter) => setPriorityFilter(v)}>
+          <Select
+            value={priorityFilter}
+            onValueChange={(v: PriorityFilter) => setPriorityFilter(v)}
+          >
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Prioridade" />
             </SelectTrigger>
@@ -354,23 +456,35 @@ function TicketsPage() {
                 <Plus className="h-4 w-4" /> Novo
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+            <DialogContent
+              className="max-h-[90vh] overflow-y-auto sm:max-w-2xl"
+              onKeyDown={handleDialogKey}
+            >
               <DialogHeader>
                 <DialogTitle>{editing ? "Editar chamado" : "Novo chamado"}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-2">
-                    <Label>Título *</Label>
+                    <Label htmlFor="ticket-title">Título *</Label>
                     <Input
+                      id="ticket-title"
                       placeholder="Resumo do problema"
                       value={form.title}
                       onChange={(e) => setForm({ ...form, title: e.target.value })}
+                      aria-invalid={!!titleError}
+                      className={cn(titleError && "border-destructive")}
                     />
+                    {titleError && (
+                      <p className="text-[11px] font-semibold text-destructive" role="alert">
+                        {titleError}
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-2">
-                    <Label>Solicitante</Label>
+                    <Label htmlFor="ticket-requester">Solicitante</Label>
                     <Input
+                      id="ticket-requester"
                       placeholder="Seu nome"
                       value={form.requester}
                       onChange={(e) => setForm({ ...form, requester: e.target.value })}
@@ -379,16 +493,28 @@ function TicketsPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Descrição detalhada *</Label>
+                  <Label htmlFor="ticket-description">Descrição detalhada *</Label>
                   <Textarea
+                    id="ticket-description"
+                    ref={descriptionRef}
                     placeholder="O que está acontecendo? Passos para reproduzir, comportamento esperado, mensagens de erro..."
                     value={form.description}
                     onChange={(e) => setForm({ ...form, description: e.target.value })}
-                    className="min-h-32"
+                    aria-invalid={!!descError}
+                    className={cn(
+                      "min-h-32 resize-none overflow-hidden",
+                      descError && "border-destructive",
+                    )}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Quanto mais detalhes, mais rápido o setor consegue resolver.
-                  </p>
+                  {descError ? (
+                    <p className="text-[11px] font-semibold text-destructive" role="alert">
+                      {descError}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Quanto mais detalhes, mais rápido o setor consegue resolver.
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -552,7 +678,13 @@ function TicketsPage() {
                   )}
                 </div>
               </div>
-              <DialogFooter>
+              <DialogFooter className="flex-col items-stretch gap-2 sm:flex-row sm:items-center">
+                <span className="hidden text-[11px] text-muted-foreground sm:mr-auto sm:inline">
+                  Dica: <kbd className="rounded border border-border bg-muted/60 px-1 font-mono text-[10px]">Ctrl</kbd>{" "}
+                  +{" "}
+                  <kbd className="rounded border border-border bg-muted/60 px-1 font-mono text-[10px]">Enter</kbd>{" "}
+                  para salvar
+                </span>
                 <Button variant="ghost" onClick={() => setOpen(false)}>
                   Cancelar
                 </Button>
@@ -563,13 +695,21 @@ function TicketsPage() {
         </div>
       </div>
 
-      {filtered.length === 0 ? (
-        <Card>
-          <CardContent className="p-8 text-center text-sm text-muted-foreground">
-            Nenhum chamado.
-          </CardContent>
-        </Card>
-      ) : (
+      <SectionShell
+        id="lista-chamados"
+        title="Lista de chamados"
+        description={`${filtered.length} chamado(s) ${
+          priorityFilter !== "all" ? `· prioridade ${priorityLabel[priorityFilter]}` : ""
+        }`}
+        icon={<TicketIcon className="h-4 w-4" />}
+        iconTone="info"
+        state={tickets.length === 0 ? "empty" : filtered.length === 0 ? "empty" : "filled"}
+        emptyMessage={
+          tickets.length === 0
+            ? "Você ainda não criou nenhum chamado. Use o botão Novo no topo."
+            : "Nenhum chamado bate com os filtros atuais."
+        }
+      >
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {filtered.map((t) => {
             const imgs = (t.attachments ?? []).filter((a) => a.type.startsWith("image/"));
@@ -577,7 +717,7 @@ function TicketsPage() {
               <Card
                 key={t.id}
                 onClick={() => setView(t)}
-                className="group flex cursor-pointer flex-col overflow-hidden transition hover:border-primary/50 hover:shadow-md"
+                className="group flex cursor-pointer flex-col overflow-hidden transition hover:border-primary/50 hover:shadow-elevated"
               >
                 {imgs[0] && (
                   <div className="relative block aspect-video overflow-hidden bg-muted">
@@ -612,28 +752,29 @@ function TicketsPage() {
                   </div>
 
                   {t.description && (
-                    <p className="line-clamp-3 text-sm text-muted-foreground">{t.description}</p>
+                    <p className="line-clamp-3 text-sm text-muted-foreground">
+                      {t.description}
+                    </p>
                   )}
 
                   <div className="flex flex-wrap gap-1.5">
-                    <Badge className={priorityClass[t.priority]} variant="secondary">
-                      <AlertTriangle className="mr-1 h-3 w-3" />
+                    <StatusBadge tone={priorityTone[t.priority]} size="sm">
                       {priorityLabel[t.priority]}
-                    </Badge>
-                    <Badge className={statusClass[t.status]} variant="secondary">
+                    </StatusBadge>
+                    <StatusBadge tone={statusTone[t.status]} size="sm">
                       {statusLabel[t.status]}
-                    </Badge>
+                    </StatusBadge>
                     {(t.links?.length ?? 0) > 0 && (
-                      <Badge variant="outline" className="gap-1">
+                      <span className="inline-flex items-center gap-1 rounded-md border border-border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                         <LinkIcon className="h-3 w-3" />
                         {t.links!.length}
-                      </Badge>
+                      </span>
                     )}
                     {(t.attachments?.length ?? 0) > 0 && (
-                      <Badge variant="outline" className="gap-1">
+                      <span className="inline-flex items-center gap-1 rounded-md border border-border px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                         <Paperclip className="h-3 w-3" />
                         {t.attachments!.length}
-                      </Badge>
+                      </span>
                     )}
                   </div>
 
@@ -659,10 +800,20 @@ function TicketsPage() {
                         <Check className="h-4 w-4" />
                       </Button>
                     )}
-                    <Button size="icon" variant="ghost" onClick={() => openEdit(t)} title="Editar">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => openEdit(t)}
+                      title="Editar"
+                    >
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button size="icon" variant="ghost" onClick={() => remove(t.id)} title="Excluir">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => remove(t.id)}
+                      title="Excluir"
+                    >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -671,7 +822,7 @@ function TicketsPage() {
             );
           })}
         </div>
-      )}
+      </SectionShell>
 
       <Dialog open={!!view} onOpenChange={(o) => !o && setView(null)}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
@@ -698,18 +849,17 @@ function TicketsPage() {
                   </div>
                   <div>
                     <div className="text-xs text-muted-foreground">Urgência</div>
-                    <Badge className={priorityClass[view.priority]} variant="secondary">
-                      <AlertTriangle className="mr-1 h-3 w-3" />
+                    <StatusBadge tone={priorityTone[view.priority]} size="md">
                       {priorityLabel[view.priority]}
-                    </Badge>
+                    </StatusBadge>
                   </div>
                   <div>
                     <div className="text-xs text-muted-foreground">Status</div>
-                    <Badge className={statusClass[view.status]} variant="secondary">
+                    <StatusBadge tone={statusTone[view.status]} size="md">
                       {statusLabel[view.status]}
-                    </Badge>
+                    </StatusBadge>
                   </div>
-                  <div className="col-span-2 sm:col-span-4 text-xs text-muted-foreground">
+                  <div className="col-span-2 text-xs text-muted-foreground sm:col-span-4">
                     Aberto em {new Date(view.createdAt).toLocaleString("pt-BR")}
                   </div>
                 </div>
