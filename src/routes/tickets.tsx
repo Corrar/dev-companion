@@ -158,6 +158,7 @@ function TicketsPage() {
     setForm({
       title: t.title,
       description: t.description ?? "",
+      requester: t.requester ?? "",
       status: t.status,
       priority: t.priority,
       sector: t.sector ?? SECTORS[0],
