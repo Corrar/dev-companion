@@ -681,19 +681,37 @@ function TicketsPage() {
                 <DialogTitle>{view.title}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
-                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                  <Building2 className="h-3 w-3" />
-                  <span>{view.sector}</span>
-                  <span>•</span>
-                  <span>{new Date(view.createdAt).toLocaleString("pt-BR")}</span>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  <Badge className={priorityClass[view.priority]} variant="secondary">
-                    {priorityLabel[view.priority]}
-                  </Badge>
-                  <Badge className={statusClass[view.status]} variant="secondary">
-                    {statusLabel[view.status]}
-                  </Badge>
+                <div className="grid grid-cols-2 gap-3 rounded-md border bg-muted/30 p-3 text-sm sm:grid-cols-4">
+                  <div>
+                    <div className="text-xs text-muted-foreground">Solicitante</div>
+                    <div className="flex items-center gap-1 font-medium">
+                      <User className="h-3.5 w-3.5" />
+                      {view.requester || "—"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">Setor</div>
+                    <div className="flex items-center gap-1 font-medium">
+                      <Building2 className="h-3.5 w-3.5" />
+                      {view.sector}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">Urgência</div>
+                    <Badge className={priorityClass[view.priority]} variant="secondary">
+                      <AlertTriangle className="mr-1 h-3 w-3" />
+                      {priorityLabel[view.priority]}
+                    </Badge>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">Status</div>
+                    <Badge className={statusClass[view.status]} variant="secondary">
+                      {statusLabel[view.status]}
+                    </Badge>
+                  </div>
+                  <div className="col-span-2 sm:col-span-4 text-xs text-muted-foreground">
+                    Aberto em {new Date(view.createdAt).toLocaleString("pt-BR")}
+                  </div>
                 </div>
                 {view.description && (
                   <div>
