@@ -38,6 +38,7 @@ export interface Ticket {
   id: string;
   title: string;
   description?: string;
+  requester?: string;
   links?: string[];
   attachments?: TicketAttachment[];
   status: TicketStatus;

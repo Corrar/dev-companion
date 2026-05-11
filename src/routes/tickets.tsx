@@ -42,6 +42,9 @@ import {
   X,
   Image as ImageIcon,
   Eye,
+  Printer,
+  User,
+  AlertTriangle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -98,6 +101,7 @@ const isValidUrl = (s: string) => {
 type FormState = {
   title: string;
   description: string;
+  requester: string;
   status: TicketStatus;
   priority: Priority;
   sector: string;
@@ -108,6 +112,7 @@ type FormState = {
 const emptyForm = (): FormState => ({
   title: "",
   description: "",
+  requester: "",
   status: "espera",
   priority: "media",
   sector: SECTORS[0],
@@ -115,9 +120,12 @@ const emptyForm = (): FormState => ({
   attachments: [],
 });
 
+type PriorityFilter = "all" | Priority;
+
 function TicketsPage() {
   const [tickets, setTickets] = useLocalStorage<Ticket[]>("tickets", []);
   const [search, setSearch] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>("all");
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Ticket | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm());
@@ -129,12 +137,14 @@ function TicketsPage() {
     () =>
       tickets.filter((t) => {
         const q = search.toLowerCase();
-        return (
+        const matchesSearch =
           t.title.toLowerCase().includes(q) ||
-          (t.description ?? "").toLowerCase().includes(q)
-        );
+          (t.description ?? "").toLowerCase().includes(q) ||
+          (t.requester ?? "").toLowerCase().includes(q);
+        const matchesPriority = priorityFilter === "all" || t.priority === priorityFilter;
+        return matchesSearch && matchesPriority;
       }),
-    [tickets, search],
+    [tickets, search, priorityFilter],
   );
 
   const openNew = () => {
@@ -148,6 +158,7 @@ function TicketsPage() {
     setForm({
       title: t.title,
       description: t.description ?? "",
+      requester: t.requester ?? "",
       status: t.status,
       priority: t.priority,
       sector: t.sector ?? SECTORS[0],
@@ -238,6 +249,70 @@ function TicketsPage() {
 
   const remove = (id: string) => setTickets((prev) => prev.filter((t) => t.id !== id));
 
+  const printList = () => {
+    const escape = (s: string) =>
+      s.replace(/[&<>"']/g, (c) =>
+        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
+      );
+    const rows = filtered
+      .map(
+        (t) => `
+          <article class="ticket">
+            <header>
+              <h2>${escape(t.title)}</h2>
+              <span class="badge p-${t.priority}">${priorityLabel[t.priority]}</span>
+              <span class="badge s">${statusLabel[t.status]}</span>
+            </header>
+            <div class="meta">
+              <span><strong>Solicitante:</strong> ${escape(t.requester || "—")}</span>
+              <span><strong>Setor:</strong> ${escape(t.sector || "—")}</span>
+              <span><strong>Aberto em:</strong> ${new Date(t.createdAt).toLocaleString("pt-BR")}</span>
+              <span><strong>Progresso:</strong> ${t.progress ?? 0}%</span>
+            </div>
+            ${t.description ? `<p class="desc">${escape(t.description)}</p>` : ""}
+            ${
+              t.links?.length
+                ? `<div class="links"><strong>Links:</strong><ul>${t.links
+                    .map((l) => `<li>${escape(l)}</li>`)
+                    .join("")}</ul></div>`
+                : ""
+            }
+          </article>`,
+      )
+      .join("");
+    const filterLabel =
+      priorityFilter === "all" ? "Todas as prioridades" : `Prioridade: ${priorityLabel[priorityFilter]}`;
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Chamados — DevHub</title>
+      <style>
+        *{box-sizing:border-box}
+        body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#111;padding:24px;max-width:900px;margin:0 auto}
+        h1{margin:0 0 4px;font-size:22px}
+        .sub{color:#555;font-size:13px;margin-bottom:20px}
+        .ticket{border:1px solid #ddd;border-radius:8px;padding:14px;margin-bottom:12px;page-break-inside:avoid}
+        .ticket header{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+        .ticket h2{font-size:15px;margin:0;flex:1;min-width:200px}
+        .badge{font-size:11px;padding:2px 8px;border-radius:999px;background:#eee}
+        .p-baixa{background:#dcfce7;color:#166534}
+        .p-media{background:#fef3c7;color:#92400e}
+        .p-alta{background:#fee2e2;color:#991b1b}
+        .s{background:#e0e7ff;color:#3730a3}
+        .meta{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:12px;color:#444;margin-bottom:8px}
+        .desc{font-size:13px;white-space:pre-wrap;background:#f8f8f8;padding:8px;border-radius:6px;margin:8px 0}
+        .links{font-size:12px}
+        .links ul{margin:4px 0 0 18px;padding:0}
+        @media print{body{padding:0}}
+      </style></head><body>
+        <h1>Lista de Chamados</h1>
+        <div class="sub">${filterLabel} • ${filtered.length} chamado(s) • ${new Date().toLocaleString("pt-BR")}</div>
+        ${rows || '<p style="color:#888">Nenhum chamado.</p>'}
+        <script>window.onload=()=>setTimeout(()=>window.print(),300)</script>
+      </body></html>`;
+    const w = window.open("", "_blank");
+    if (!w) return toast.error("Permita pop-ups para imprimir");
+    w.document.write(html);
+    w.document.close();
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -257,6 +332,22 @@ function TicketsPage() {
               className="pl-8 w-56"
             />
           </div>
+          <Select value={priorityFilter} onValueChange={(v: PriorityFilter) => setPriorityFilter(v)}>
+            <SelectTrigger className="w-40">
+              <SelectValue placeholder="Prioridade" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas prioridades</SelectItem>
+              {(Object.keys(priorityLabel) as Priority[]).map((p) => (
+                <SelectItem key={p} value={p}>
+                  {priorityLabel[p]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button variant="outline" onClick={printList}>
+            <Printer className="h-4 w-4" /> Imprimir
+          </Button>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
               <Button onClick={openNew}>
@@ -268,13 +359,23 @@ function TicketsPage() {
                 <DialogTitle>{editing ? "Editar chamado" : "Novo chamado"}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Título *</Label>
-                  <Input
-                    placeholder="Resumo do problema"
-                    value={form.title}
-                    onChange={(e) => setForm({ ...form, title: e.target.value })}
-                  />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label>Título *</Label>
+                    <Input
+                      placeholder="Resumo do problema"
+                      value={form.title}
+                      onChange={(e) => setForm({ ...form, title: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Solicitante</Label>
+                    <Input
+                      placeholder="Seu nome"
+                      value={form.requester}
+                      onChange={(e) => setForm({ ...form, requester: e.target.value })}
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -473,13 +574,13 @@ function TicketsPage() {
           {filtered.map((t) => {
             const imgs = (t.attachments ?? []).filter((a) => a.type.startsWith("image/"));
             return (
-              <Card key={t.id} className="flex flex-col overflow-hidden">
+              <Card
+                key={t.id}
+                onClick={() => setView(t)}
+                className="group flex cursor-pointer flex-col overflow-hidden transition hover:border-primary/50 hover:shadow-md"
+              >
                 {imgs[0] && (
-                  <button
-                    type="button"
-                    onClick={() => setView(t)}
-                    className="relative block aspect-video overflow-hidden bg-muted"
-                  >
+                  <div className="relative block aspect-video overflow-hidden bg-muted">
                     <img
                       src={imgs[0].dataUrl}
                       alt={imgs[0].name}
@@ -490,16 +591,21 @@ function TicketsPage() {
                         +{imgs.length - 1}
                       </span>
                     )}
-                  </button>
+                  </div>
                 )}
                 <CardContent className="flex flex-1 flex-col gap-3 p-4">
                   <div className="space-y-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="font-medium leading-snug">{t.title}</h3>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      <Building2 className="h-3 w-3" />
-                      <span>{t.sector ?? "—"}</span>
+                    <h3 className="font-medium leading-snug">{t.title}</h3>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                      <span className="inline-flex items-center gap-1">
+                        <User className="h-3 w-3" />
+                        {t.requester || "—"}
+                      </span>
+                      <span>•</span>
+                      <span className="inline-flex items-center gap-1">
+                        <Building2 className="h-3 w-3" />
+                        {t.sector ?? "—"}
+                      </span>
                       <span>•</span>
                       <span>{new Date(t.createdAt).toLocaleDateString("pt-BR")}</span>
                     </div>
@@ -511,6 +617,7 @@ function TicketsPage() {
 
                   <div className="flex flex-wrap gap-1.5">
                     <Badge className={priorityClass[t.priority]} variant="secondary">
+                      <AlertTriangle className="mr-1 h-3 w-3" />
                       {priorityLabel[t.priority]}
                     </Badge>
                     <Badge className={statusClass[t.status]} variant="secondary">
@@ -538,15 +645,10 @@ function TicketsPage() {
                     <Progress value={t.progress ?? 0} />
                   </div>
 
-                  <div className="mt-auto flex justify-end gap-1 pt-1">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => setView(t)}
-                      title="Ver detalhes"
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
+                  <div
+                    className="mt-auto flex justify-end gap-1 pt-1"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {t.status !== "concluido" && (
                       <Button
                         size="icon"
@@ -557,10 +659,10 @@ function TicketsPage() {
                         <Check className="h-4 w-4" />
                       </Button>
                     )}
-                    <Button size="icon" variant="ghost" onClick={() => openEdit(t)}>
+                    <Button size="icon" variant="ghost" onClick={() => openEdit(t)} title="Editar">
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button size="icon" variant="ghost" onClick={() => remove(t.id)}>
+                    <Button size="icon" variant="ghost" onClick={() => remove(t.id)} title="Excluir">
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
@@ -579,19 +681,37 @@ function TicketsPage() {
                 <DialogTitle>{view.title}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
-                <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                  <Building2 className="h-3 w-3" />
-                  <span>{view.sector}</span>
-                  <span>•</span>
-                  <span>{new Date(view.createdAt).toLocaleString("pt-BR")}</span>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  <Badge className={priorityClass[view.priority]} variant="secondary">
-                    {priorityLabel[view.priority]}
-                  </Badge>
-                  <Badge className={statusClass[view.status]} variant="secondary">
-                    {statusLabel[view.status]}
-                  </Badge>
+                <div className="grid grid-cols-2 gap-3 rounded-md border bg-muted/30 p-3 text-sm sm:grid-cols-4">
+                  <div>
+                    <div className="text-xs text-muted-foreground">Solicitante</div>
+                    <div className="flex items-center gap-1 font-medium">
+                      <User className="h-3.5 w-3.5" />
+                      {view.requester || "—"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">Setor</div>
+                    <div className="flex items-center gap-1 font-medium">
+                      <Building2 className="h-3.5 w-3.5" />
+                      {view.sector}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">Urgência</div>
+                    <Badge className={priorityClass[view.priority]} variant="secondary">
+                      <AlertTriangle className="mr-1 h-3 w-3" />
+                      {priorityLabel[view.priority]}
+                    </Badge>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">Status</div>
+                    <Badge className={statusClass[view.status]} variant="secondary">
+                      {statusLabel[view.status]}
+                    </Badge>
+                  </div>
+                  <div className="col-span-2 sm:col-span-4 text-xs text-muted-foreground">
+                    Aberto em {new Date(view.createdAt).toLocaleString("pt-BR")}
+                  </div>
                 </div>
                 {view.description && (
                   <div>
