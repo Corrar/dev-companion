@@ -292,6 +292,55 @@ function ProjectsPage() {
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
               />
+
+              {/* Anexos */}
+              <div className="space-y-2">
+                <label className="flex cursor-pointer items-center gap-2 rounded-md border border-dashed border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground transition hover:bg-muted hover:text-foreground">
+                  <Paperclip className="h-4 w-4" />
+                  <span>Anexar arquivos (até 5MB cada)</span>
+                  <input
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      handleFiles(e.target.files);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+                {form.attachments.length > 0 && (
+                  <ul className="space-y-1">
+                    {form.attachments.map((a) => (
+                      <li
+                        key={a.id}
+                        className="flex items-center gap-2 rounded-md border border-border bg-card px-2 py-1 text-xs"
+                      >
+                        {a.type.startsWith("image/") ? (
+                          <img
+                            src={a.dataUrl}
+                            alt={a.name}
+                            className="h-8 w-8 rounded object-cover"
+                          />
+                        ) : (
+                          <FileIcon className="h-4 w-4 text-muted-foreground" />
+                        )}
+                        <span className="flex-1 truncate">{a.name}</span>
+                        <span className="tabular-nums text-muted-foreground">
+                          {(a.size / 1024).toFixed(0)} KB
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeAttachment(a.id)}
+                          className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
+                          aria-label={`Remover ${a.name}`}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
             <DialogFooter>
               <Button variant="ghost" onClick={() => setOpen(false)}>
