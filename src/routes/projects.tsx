@@ -6,6 +6,7 @@ import {
   type ProjectTask,
   type ProjectColumn,
   type SubTask,
+  type TaskAttachment,
 } from "@/lib/storage";
 import {
   DndContext,
@@ -33,7 +34,7 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, Trash2, GripVertical, FolderKanban } from "lucide-react";
+import { Plus, Trash2, GripVertical, FolderKanban, Paperclip, FileIcon, Download, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { SectionShell } from "@/components/design-system";
@@ -78,7 +79,11 @@ function ProjectsPage() {
   const [tasks, setTasks] = useLocalStorage<ProjectTask[]>("projects", []);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ProjectTask | null>(null);
-  const [form, setForm] = useState({ title: "", description: "" });
+  const [form, setForm] = useState<{
+    title: string;
+    description: string;
+    attachments: TaskAttachment[];
+  }>({ title: "", description: "", attachments: [] });
   const [submitted, setSubmitted] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -89,26 +94,59 @@ function ProjectsPage() {
   // Auto-save draft (apenas para "novo")
   useEffect(() => {
     if (!open || editing) return;
-    const id = window.setTimeout(() => writeDraft(form), 500);
+    const id = window.setTimeout(
+      () => writeDraft({ title: form.title, description: form.description }),
+      500,
+    );
     return () => window.clearTimeout(id);
   }, [form, open, editing]);
 
   const openNew = () => {
     setEditing(null);
     const draft = readDraft();
-    setForm(draft ?? { title: "", description: "" });
+    setForm({ ...(draft ?? { title: "", description: "" }), attachments: [] });
     setSubmitted(false);
     setOpen(true);
   };
   const openEdit = (t: ProjectTask) => {
     setEditing(t);
-    setForm({ title: t.title, description: t.description });
+    setForm({
+      title: t.title,
+      description: t.description,
+      attachments: t.attachments ?? [],
+    });
     setSubmitted(false);
     setOpen(true);
   };
 
   const titleError = submitted && !form.title.trim() ? "Título obrigatório." : undefined;
   const isValid = !!form.title.trim();
+
+  const handleFiles = async (files: FileList | null) => {
+    if (!files || !files.length) return;
+    const max = 5 * 1024 * 1024; // 5MB
+    const next: TaskAttachment[] = [];
+    for (const f of Array.from(files)) {
+      if (f.size > max) {
+        toast.error(`"${f.name}" excede 5MB`);
+        continue;
+      }
+      const dataUrl = await new Promise<string>((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(String(r.result));
+        r.onerror = () => rej(r.error);
+        r.readAsDataURL(f);
+      });
+      next.push({ id: uid(), name: f.name, type: f.type, size: f.size, dataUrl });
+    }
+    if (next.length) {
+      setForm((p) => ({ ...p, attachments: [...p.attachments, ...next] }));
+      toast.success(`${next.length} arquivo(s) anexado(s)`);
+    }
+  };
+
+  const removeAttachment = (id: string) =>
+    setForm((p) => ({ ...p, attachments: p.attachments.filter((a) => a.id !== id) }));
 
   const save = () => {
     setSubmitted(true);
@@ -117,13 +155,17 @@ function ProjectsPage() {
       return;
     }
     if (editing) {
-      setTasks((prev) => prev.map((t) => (t.id === editing.id ? { ...t, ...form } : t)));
+      setTasks((prev) =>
+        prev.map((t) => (t.id === editing.id ? { ...t, ...form } : t)),
+      );
       toast.success("Tarefa atualizada");
     } else {
       setTasks((prev) => [
         {
           id: uid(),
-          ...form,
+          title: form.title,
+          description: form.description,
+          attachments: form.attachments,
           column: "todo",
           checklist: [],
           createdAt: new Date().toISOString(),
@@ -250,6 +292,55 @@ function ProjectsPage() {
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
               />
+
+              {/* Anexos */}
+              <div className="space-y-2">
+                <label className="flex cursor-pointer items-center gap-2 rounded-md border border-dashed border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground transition hover:bg-muted hover:text-foreground">
+                  <Paperclip className="h-4 w-4" />
+                  <span>Anexar arquivos (até 5MB cada)</span>
+                  <input
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => {
+                      handleFiles(e.target.files);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+                {form.attachments.length > 0 && (
+                  <ul className="space-y-1">
+                    {form.attachments.map((a) => (
+                      <li
+                        key={a.id}
+                        className="flex items-center gap-2 rounded-md border border-border bg-card px-2 py-1 text-xs"
+                      >
+                        {a.type.startsWith("image/") ? (
+                          <img
+                            src={a.dataUrl}
+                            alt={a.name}
+                            className="h-8 w-8 rounded object-cover"
+                          />
+                        ) : (
+                          <FileIcon className="h-4 w-4 text-muted-foreground" />
+                        )}
+                        <span className="flex-1 truncate">{a.name}</span>
+                        <span className="tabular-nums text-muted-foreground">
+                          {(a.size / 1024).toFixed(0)} KB
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => removeAttachment(a.id)}
+                          className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
+                          aria-label={`Remover ${a.name}`}
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
             <DialogFooter>
               <Button variant="ghost" onClick={() => setOpen(false)}>
@@ -428,6 +519,27 @@ function SortableTaskCard({
             {task.description && (
               <div className="mt-0.5 text-xs text-muted-foreground">
                 {task.description}
+              </div>
+            )}
+            {task.attachments && task.attachments.length > 0 && (
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {task.attachments.map((a) => (
+                  <a
+                    key={a.id}
+                    href={a.dataUrl}
+                    download={a.name}
+                    onClick={(e) => e.stopPropagation()}
+                    className="inline-flex max-w-[140px] items-center gap-1 rounded-md border border-border bg-muted/50 px-1.5 py-0.5 text-[10px] text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                    title={a.name}
+                  >
+                    {a.type.startsWith("image/") ? (
+                      <img src={a.dataUrl} alt="" className="h-3 w-3 rounded-sm object-cover" />
+                    ) : (
+                      <Download className="h-3 w-3" />
+                    )}
+                    <span className="truncate">{a.name}</span>
+                  </a>
+                ))}
               </div>
             )}
           </div>

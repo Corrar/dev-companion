@@ -57,17 +57,26 @@ export interface SubTask {
   done: boolean;
 }
 
+export interface TaskAttachment {
+  id: string;
+  name: string;
+  dataUrl: string; // base64
+  type: string;
+  size: number;
+}
+
 export interface ProjectTask {
   id: string;
   title: string;
   description: string;
   column: ProjectColumn;
   checklist: SubTask[];
+  attachments?: TaskAttachment[];
   createdAt: string;
   completedAt?: string;
-  /** ISO datetime opcional — quando presente, a tarefa aparece em /agenda. */
+  /** ISO datetime opcional. */
   start?: string;
-  /** ISO datetime opcional — fim do bloco visual na agenda. */
+  /** ISO datetime opcional. */
   end?: string;
 }
 
