@@ -34,7 +34,7 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Plus, Trash2, GripVertical, FolderKanban } from "lucide-react";
+import { Plus, Trash2, GripVertical, FolderKanban, Paperclip, FileIcon, Download, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { SectionShell } from "@/components/design-system";
