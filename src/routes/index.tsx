@@ -1,21 +1,23 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useLocalStorage, type Ticket, type ProjectTask } from "@/lib/storage";
-import { Progress } from "@/components/ui/progress";
+
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon, Sparkles, Rocket, Ticket as TicketIcon, ArrowRight } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import {
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
+  Area,
+  AreaChart,
+  Legend,
 } from "recharts";
+import { Trophy, TrendingUp, Flame, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { DateRange } from "react-day-picker";
 import { KpiCard, SectionShell } from "@/components/design-system";
@@ -311,10 +313,72 @@ function Dashboard() {
         ))}
       </div>
 
+      {/* Insights rápidos */}
+      {(() => {
+        const days = sparkTasksDone ?? [];
+        const totalDays = days.length || 1;
+        const sumTasks = days.reduce((a, b) => a + b, 0);
+        const avgPerDay = (sumTasks / totalDays).toFixed(1);
+        const bestIdx = days.reduce((bi, v, i, arr) => (v > arr[bi] ? i : bi), 0);
+        const bestDate =
+          range?.from && days.length
+            ? new Date(range.from.getTime() + bestIdx * 86_400_000).toLocaleDateString("pt-BR", {
+                day: "2-digit",
+                month: "short",
+              })
+            : "—";
+        const bestVal = days[bestIdx] ?? 0;
+        const streak = (() => {
+          let s = 0;
+          for (let i = days.length - 1; i >= 0; i--) {
+            if (days[i] > 0) s++;
+            else break;
+          }
+          return s;
+        })();
+        const insights = [
+          { icon: Trophy, label: "Melhor dia", value: bestVal > 0 ? `${bestVal} em ${bestDate}` : "—", tone: "text-chart-4" },
+          { icon: Flame, label: "Sequência", value: streak > 0 ? `${streak} dia${streak > 1 ? "s" : ""}` : "0 dias", tone: "text-priority-urgent" },
+          { icon: TrendingUp, label: "Média/dia", value: avgPerDay, tone: "text-chart-2" },
+          { icon: Target, label: "Meta período", value: `${Math.min(stats.productivity, 100)}%`, tone: "text-primary" },
+        ];
+        return (
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {insights.map((it, i) => (
+              <div
+                key={it.label}
+                className={cn(
+                  "group flex items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-card hover-lift animate-fade-up",
+                  `delay-${(i + 1) * 100}`,
+                )}
+              >
+                <div className={cn("rounded-lg bg-muted p-2 transition-transform group-hover:scale-110", it.tone)}>
+                  <it.icon className="h-4 w-4" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{it.label}</div>
+                  <div className="truncate text-base font-semibold tabular-nums">{it.value}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
+
       <SectionShell title="Produtividade do período" id="produtividade-periodo">
-        <Progress value={stats.productivity} />
-        <div className="mt-2 text-xs text-muted-foreground">
-          {stats.tasksDone} de {stats.tasksCreated} tarefas concluídas
+        <div className="space-y-3">
+          <div className="flex items-baseline justify-between">
+            <span className="text-3xl font-bold tabular-nums">{stats.productivity}%</span>
+            <span className="text-xs text-muted-foreground">
+              {stats.tasksDone} de {stats.tasksCreated} tarefas concluídas
+            </span>
+          </div>
+          <div className="relative h-3 overflow-hidden rounded-full bg-muted">
+            <div
+              className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-primary via-chart-2 to-chart-4 transition-[width] duration-700 ease-out"
+              style={{ width: `${stats.productivity}%` }}
+            />
+          </div>
         </div>
       </SectionShell>
 
@@ -322,27 +386,49 @@ function Dashboard() {
         title="Atividade no ano"
         description={`Tarefas e chamados concluídos por mês — ${year}`}
         id="atividade-ano"
-        contentClassName="h-72"
+        contentClassName="h-80"
       >
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData}>
+          <AreaChart data={chartData} margin={{ top: 8, right: 12, bottom: 0, left: -10 }}>
+            <defs>
+              <linearGradient id="gTarefas" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--chart-1)" stopOpacity={0.55} />
+                <stop offset="100%" stopColor="var(--chart-1)" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient id="gChamados" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="var(--chart-2)" stopOpacity={0.55} />
+                <stop offset="100%" stopColor="var(--chart-2)" stopOpacity={0} />
+              </linearGradient>
+            </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
             <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={12} />
-            <YAxis
-              stroke="var(--muted-foreground)"
-              fontSize={12}
-              allowDecimals={false}
-            />
+            <YAxis stroke="var(--muted-foreground)" fontSize={12} allowDecimals={false} />
             <Tooltip
               contentStyle={{
                 background: "var(--popover)",
                 border: "1px solid var(--border)",
                 borderRadius: 8,
+                boxShadow: "var(--shadow-elevated)",
               }}
             />
-            <Bar dataKey="Tarefas" fill="var(--chart-1)" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="Chamados" fill="var(--chart-2)" radius={[4, 4, 0, 0]} />
-          </BarChart>
+            <Legend wrapperStyle={{ fontSize: 12 }} />
+            <Area
+              type="monotone"
+              dataKey="Tarefas"
+              stroke="var(--chart-1)"
+              strokeWidth={2}
+              fill="url(#gTarefas)"
+              activeDot={{ r: 5 }}
+            />
+            <Area
+              type="monotone"
+              dataKey="Chamados"
+              stroke="var(--chart-2)"
+              strokeWidth={2}
+              fill="url(#gChamados)"
+              activeDot={{ r: 5 }}
+            />
+          </AreaChart>
         </ResponsiveContainer>
       </SectionShell>
     </div>
