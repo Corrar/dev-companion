@@ -8,8 +8,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { CalendarIcon, Sparkles, Rocket, Ticket as TicketIcon, ArrowRight } from "lucide-react";
 import { Link } from "@tanstack/react-router";
 import {
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
   Tooltip,
