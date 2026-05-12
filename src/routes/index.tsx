@@ -15,7 +15,11 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
+  Area,
+  AreaChart,
+  Legend,
 } from "recharts";
+import { Trophy, TrendingUp, Flame, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { DateRange } from "react-day-picker";
 import { KpiCard, SectionShell } from "@/components/design-system";
