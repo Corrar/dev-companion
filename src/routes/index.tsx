@@ -5,7 +5,8 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Sparkles, Rocket, Ticket as TicketIcon, ArrowRight } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import {
   BarChart,
   Bar,
@@ -155,13 +156,85 @@ function Dashboard() {
     }));
   }, [tickets, tasks, year]);
 
+  const greeting = (() => {
+    const h = now.getHours();
+    if (h < 12) return "Bom dia";
+    if (h < 18) return "Boa tarde";
+    return "Boa noite";
+  })();
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      {/* ===== Hero ===== */}
+      <section
+        className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-primary/15 via-accent/10 to-chart-2/15 animate-hero-gradient p-6 sm:p-10 shadow-elevated"
+      >
+        {/* Blobs decorativos */}
+        <div className="pointer-events-none absolute -top-16 -right-16 h-64 w-64 rounded-full bg-primary/30 blur-3xl animate-float-blob" />
+        <div className="pointer-events-none absolute -bottom-20 -left-10 h-72 w-72 rounded-full bg-chart-2/25 blur-3xl animate-float-blob delay-200" />
+
+        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div className="max-w-2xl space-y-3">
+            <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-3 py-1 text-xs font-medium backdrop-blur animate-fade-up">
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
+              {greeting}, dev — pronto pra render?
+            </span>
+            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl animate-fade-up delay-100">
+              Seu cockpit{" "}
+              <span className="bg-gradient-to-r from-primary via-chart-2 to-chart-4 bg-clip-text text-transparent">
+                de produtividade
+              </span>
+            </h1>
+            <p className="text-sm text-muted-foreground sm:text-base animate-fade-up delay-200">
+              Acompanhe tarefas, chamados e o ritmo do mês — tudo num só lugar,
+              rápido e sem fricção.
+            </p>
+            <div className="flex flex-wrap gap-2 pt-2 animate-fade-up delay-300">
+              <Button asChild size="sm" className="gap-2 hover-lift">
+                <Link to="/projects">
+                  <Rocket className="h-4 w-4" />
+                  Ver projetos
+                  <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+              <Button asChild size="sm" variant="outline" className="gap-2 hover-lift">
+                <Link to="/tickets">
+                  <TicketIcon className="h-4 w-4" />
+                  Abrir chamado
+                </Link>
+              </Button>
+            </div>
+          </div>
+
+          {/* Mini destaques */}
+          <div className="grid w-full max-w-sm grid-cols-3 gap-3 animate-fade-up delay-400">
+            {[
+              { label: "Tarefas", value: stats.tasksDone, tone: "from-chart-1/30 to-chart-1/5" },
+              { label: "Chamados", value: stats.ticketsDone, tone: "from-chart-2/30 to-chart-2/5" },
+              { label: "Produtividade", value: `${stats.productivity}%`, tone: "from-primary/30 to-primary/5" },
+            ].map((m) => (
+              <div
+                key={m.label}
+                className={cn(
+                  "rounded-xl border border-border/60 bg-gradient-to-br p-3 text-center backdrop-blur hover-lift",
+                  m.tone,
+                )}
+              >
+                <div className="text-xl font-bold tabular-nums">{m.value}</div>
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {m.label}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <div className="flex flex-wrap items-center justify-between gap-3 animate-fade-up">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
+          <h2 className="text-xl font-semibold tracking-tight">
             Desempenho do Período
-          </h1>
+          </h2>
           <p className="text-sm text-muted-foreground">
             Resumo da sua produtividade.
           </p>
@@ -171,7 +244,7 @@ function Dashboard() {
             <Button
               variant="outline"
               className={cn(
-                "justify-start gap-2 text-left font-normal",
+                "justify-start gap-2 text-left font-normal hover-lift",
                 !range?.from && "text-muted-foreground",
               )}
             >
@@ -193,36 +266,49 @@ function Dashboard() {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KpiCard
-          label="Tarefas concluídas"
-          value={stats.tasksDone}
-          hint={`de ${stats.tasksCreated} criadas no período`}
-          sparkline={sparkTasksDone}
-          sparklineTone="success"
-        />
-        <KpiCard
-          label="Chamados atendidos"
-          value={stats.ticketsDone}
-          hint="resolvidos no período"
-          sparkline={sparkTicketsDone}
-          sparklineTone="primary"
-        />
-        <KpiCard
-          label="Projetos em andamento"
-          value={stats.ongoing}
-          hint="snapshot atual"
-        />
-        <KpiCard
-          label="Produtividade"
-          value={`${stats.productivity}%`}
-          delta={productivityDelta}
-          deltaLabel="pp vs. período anterior"
-          hint={
-            stats.tasksCreated === 0
-              ? "sem tarefas criadas no período"
-              : `${stats.tasksDone}/${stats.tasksCreated} concluídas`
-          }
-        />
+        {[
+          <KpiCard
+            key="td"
+            label="Tarefas concluídas"
+            value={stats.tasksDone}
+            hint={`de ${stats.tasksCreated} criadas no período`}
+            sparkline={sparkTasksDone}
+            sparklineTone="success"
+          />,
+          <KpiCard
+            key="ca"
+            label="Chamados atendidos"
+            value={stats.ticketsDone}
+            hint="resolvidos no período"
+            sparkline={sparkTicketsDone}
+            sparklineTone="primary"
+          />,
+          <KpiCard
+            key="pa"
+            label="Projetos em andamento"
+            value={stats.ongoing}
+            hint="snapshot atual"
+          />,
+          <KpiCard
+            key="pr"
+            label="Produtividade"
+            value={`${stats.productivity}%`}
+            delta={productivityDelta}
+            deltaLabel="pp vs. período anterior"
+            hint={
+              stats.tasksCreated === 0
+                ? "sem tarefas criadas no período"
+                : `${stats.tasksDone}/${stats.tasksCreated} concluídas`
+            }
+          />,
+        ].map((node, i) => (
+          <div
+            key={i}
+            className={cn("animate-fade-up hover-lift", `delay-${(i + 1) * 100}`)}
+          >
+            {node}
+          </div>
+        ))}
       </div>
 
       <SectionShell title="Produtividade do período" id="produtividade-periodo">
