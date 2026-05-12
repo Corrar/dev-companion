@@ -5,7 +5,8 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Sparkles, Rocket, Ticket as TicketIcon, ArrowRight } from "lucide-react";
+import { Link } from "@tanstack/react-router";
 import {
   BarChart,
   Bar,
