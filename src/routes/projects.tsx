@@ -6,6 +6,7 @@ import {
   type ProjectTask,
   type ProjectColumn,
   type SubTask,
+  type TaskAttachment,
 } from "@/lib/storage";
 import {
   DndContext,
