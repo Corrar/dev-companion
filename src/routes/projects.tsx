@@ -79,7 +79,11 @@ function ProjectsPage() {
   const [tasks, setTasks] = useLocalStorage<ProjectTask[]>("projects", []);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ProjectTask | null>(null);
-  const [form, setForm] = useState({ title: "", description: "" });
+  const [form, setForm] = useState<{
+    title: string;
+    description: string;
+    attachments: TaskAttachment[];
+  }>({ title: "", description: "", attachments: [] });
   const [submitted, setSubmitted] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -90,26 +94,59 @@ function ProjectsPage() {
   // Auto-save draft (apenas para "novo")
   useEffect(() => {
     if (!open || editing) return;
-    const id = window.setTimeout(() => writeDraft(form), 500);
+    const id = window.setTimeout(
+      () => writeDraft({ title: form.title, description: form.description }),
+      500,
+    );
     return () => window.clearTimeout(id);
   }, [form, open, editing]);
 
   const openNew = () => {
     setEditing(null);
     const draft = readDraft();
-    setForm(draft ?? { title: "", description: "" });
+    setForm({ ...(draft ?? { title: "", description: "" }), attachments: [] });
     setSubmitted(false);
     setOpen(true);
   };
   const openEdit = (t: ProjectTask) => {
     setEditing(t);
-    setForm({ title: t.title, description: t.description });
+    setForm({
+      title: t.title,
+      description: t.description,
+      attachments: t.attachments ?? [],
+    });
     setSubmitted(false);
     setOpen(true);
   };
 
   const titleError = submitted && !form.title.trim() ? "Título obrigatório." : undefined;
   const isValid = !!form.title.trim();
+
+  const handleFiles = async (files: FileList | null) => {
+    if (!files || !files.length) return;
+    const max = 5 * 1024 * 1024; // 5MB
+    const next: TaskAttachment[] = [];
+    for (const f of Array.from(files)) {
+      if (f.size > max) {
+        toast.error(`"${f.name}" excede 5MB`);
+        continue;
+      }
+      const dataUrl = await new Promise<string>((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(String(r.result));
+        r.onerror = () => rej(r.error);
+        r.readAsDataURL(f);
+      });
+      next.push({ id: uid(), name: f.name, type: f.type, size: f.size, dataUrl });
+    }
+    if (next.length) {
+      setForm((p) => ({ ...p, attachments: [...p.attachments, ...next] }));
+      toast.success(`${next.length} arquivo(s) anexado(s)`);
+    }
+  };
+
+  const removeAttachment = (id: string) =>
+    setForm((p) => ({ ...p, attachments: p.attachments.filter((a) => a.id !== id) }));
 
   const save = () => {
     setSubmitted(true);
@@ -118,13 +155,17 @@ function ProjectsPage() {
       return;
     }
     if (editing) {
-      setTasks((prev) => prev.map((t) => (t.id === editing.id ? { ...t, ...form } : t)));
+      setTasks((prev) =>
+        prev.map((t) => (t.id === editing.id ? { ...t, ...form } : t)),
+      );
       toast.success("Tarefa atualizada");
     } else {
       setTasks((prev) => [
         {
           id: uid(),
-          ...form,
+          title: form.title,
+          description: form.description,
+          attachments: form.attachments,
           column: "todo",
           checklist: [],
           createdAt: new Date().toISOString(),
