@@ -521,6 +521,27 @@ function SortableTaskCard({
                 {task.description}
               </div>
             )}
+            {task.attachments && task.attachments.length > 0 && (
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {task.attachments.map((a) => (
+                  <a
+                    key={a.id}
+                    href={a.dataUrl}
+                    download={a.name}
+                    onClick={(e) => e.stopPropagation()}
+                    className="inline-flex max-w-[140px] items-center gap-1 rounded-md border border-border bg-muted/50 px-1.5 py-0.5 text-[10px] text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                    title={a.name}
+                  >
+                    {a.type.startsWith("image/") ? (
+                      <img src={a.dataUrl} alt="" className="h-3 w-3 rounded-sm object-cover" />
+                    ) : (
+                      <Download className="h-3 w-3" />
+                    )}
+                    <span className="truncate">{a.name}</span>
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
           <Button
             size="icon"
